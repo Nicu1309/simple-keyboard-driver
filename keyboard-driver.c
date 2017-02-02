@@ -46,9 +46,20 @@ int keyboard_init(void){
 	major = MAJOR(devno);
 	printk(KERN_INFO DEVICE_NAME ": Device successfully allocated, major number: %d \n", major);	
 
-	keyboard_class = class_create(THIS_MODULE, DEVICE_NAME);	
-
+	/* Create class for device */
+	err = keyboard_class = class_create(THIS_MODULE, DEVICE_NAME);	
+	if (err < 0){
+		printk(KERN_ALERT DEVICE_NAME ": Unable to create class for device\n");
+		return err;
+	} 	
+	
 	dev = kmalloc(sizeof(struct keyboard_dev), GFP_KERNEL);	//Allocate memory for the device struct, GFP_KERNEL flag for kernel context
+	
+	err = device_create(keyboard_class, NULL, devno, NULL, DEVICE_NAME);
+	if (err < 0){
+		printk(KERN_ALERT DEVICE_NAME ": Unable to create device from class\n");
+		return err;
+	} 
 
 	cdev_init(&dev->cdev, &keyboard_fops);			//Init the cdev struct contained inside dev
 	
