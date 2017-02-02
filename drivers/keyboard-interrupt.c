@@ -28,7 +28,7 @@ irqreturn_t right_key_interrupt_handler(int irq, void* dev_id){
 	data->key=RIGHT;
 	gpio_set_value(data->pins->right_key_pin, 0);
 	wake_up_interruptible(&data->readers_queue);
-   
+
 	return IRQ_HANDLED;
 }
 
@@ -78,7 +78,7 @@ int setup_pinmux(struct keyboard_pins *k_pins)
    static u32 pins[] = { 					// offsets in AM335x ref man Table 9-10, upon pin names
 			 					// pin names: from table/mode0 in BB ref manual
 	0,
-	OUTPUT_PULLUP,                					//	mode 7 (gpio), PULLUP, OUTPUT 	
+	OUTPUT_PULLUP,                					//	mode 7 (gpio), PULLUP, OUTPUT
 	0,
 	INPUT_PULLDOWN,     						//      mode 7 (gpio), PULLDOWN, INPUT
 	0,
@@ -128,15 +128,18 @@ int setup_pinmux(struct keyboard_pins *k_pins)
 
 int init_system(struct keyboard_dev *device){
 	int err;
+	printk(KERN_ALERT DEVICE_NAME ": INTERRUPT.C \n");
+	printk(KERN_ALERT DEVICE_NAME ": STORING DEV POINTER  \n");
+	dev = device; //Store pointer to device struct
 
-	dev = device; //Store pointer to device struct	
-	
+	printk(KERN_ALERT DEVICE_NAME ": SETTING UP PINMUX.. \n");
  	err = setup_pinmux(dev->pins);
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to apply pinmux settings.\n");
 	  goto err_return;
 	}
-	
+
+	printk(KERN_ALERT DEVICE_NAME ": REQUESTING PINS... \n");
 	err = request_pins(dev->pins);
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request GPIOS.\n");
@@ -155,7 +158,7 @@ int shutdown_system(void){
 	disable_irq(dev->pins->right_key_irq);
 	free_irq(dev->pins->right_key_irq, (void*)dev);
 	gpio_free(dev->pins->right_key_pin);
-	
+
 	/*START KEY PIN*/
 	disable_irq(dev->pins->start_key_irq);
 	free_irq(dev->pins->start_key_irq,(void*)dev);
@@ -165,12 +168,12 @@ int shutdown_system(void){
 	disable_irq(dev->pins->up_key_irq);
 	free_irq(dev->pins->up_key_irq,(void*)dev);
 	gpio_free(dev->pins->up_key_pin);
-	
+
 	/*DOWN KEY PIN*/
 	disable_irq(dev->pins->down_key_irq);
 	free_irq(dev->pins->down_key_irq,(void*)dev);
 	gpio_free(dev->pins->down_key_pin);
-	
+
 	/*ESCAPE KEY PIN*/
 	disable_irq(dev->pins->escape_key_irq);
 	free_irq(dev->pins->escape_key_irq,(void*)dev);
@@ -182,12 +185,13 @@ int shutdown_system(void){
 	gpio_free(dev->pins->left_key_pin);
 
 	return 0;
-	
+
 }
 
 int request_pins(struct keyboard_pins *pins){
 	int err,irq_num;
-	
+
+	printk(KERN_ALERT DEVICE_NAME ": REQUEST VCC PIN \n");
 	/* Request VCC pin */
 	err = gpio_request_one(pins->vcc_pin, GPIOF_OUT_INIT_HIGH,
 	  DEVICE_NAME " gpio_vcc");
@@ -196,25 +200,29 @@ int request_pins(struct keyboard_pins *pins){
 		 pins->vcc_pin);
 	  goto err_return;
 	}
-	
+
 	/* Request RIGHT pin */
+	printk(KERN_ALERT DEVICE_NAME ": REQUEST RIGHT PIN \n");
 	err = gpio_request_one(pins->right_key_pin, GPIOF_IN, DEVICE_NAME " gpio_key_right");
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request GPIO_RIGHT_KEY pin %d.\n",
 		 pins->right_key_pin);
 	  goto err_return_free_vcc;
 	}
+	printk(KERN_ALERT DEVICE_NAME ": REQUEST IRQ \n");
 	irq_num = gpio_to_irq(pins->right_key_pin);	//Request interrupt number
+	printk(KERN_ALERT DEVICE_NAME ": IRQ NUMBER RIGHT PIN -> %d  \n", irq_num);
 	if (irq_num < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request interrupt for GPIO_RIGHT_KEY pin %d.\n",
 		 pins->right_key_pin);
 	  err = irq_num;
 	  goto err_return_free_vcc;
-	}			
+	}
 	pins->right_key_irq = irq_num;							//Match interrupt to handler
+	printk(KERN_ALERT DEVICE_NAME ": REQUEST CONTEXT IRQ \n");
 	err = request_any_context_irq(
       irq_num,
-      right_key_interrupt_handler,	
+      right_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -238,11 +246,11 @@ int request_pins(struct keyboard_pins *pins){
 		 pins->start_key_pin);
 	  err = irq_num;
 	  goto err_return_free_right;
-	}				
+	}
 	pins->start_key_irq = irq_num;				//Match interrupt to handler
 	err = request_any_context_irq(
       irq_num,
-      start_key_interrupt_handler,	
+      start_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -266,11 +274,11 @@ int request_pins(struct keyboard_pins *pins){
 		 pins->up_key_pin);
 	  err = irq_num;
 	  goto err_return_free_start;
-	}						
+	}
 	pins->up_key_irq = irq_num;				//Match interrupt to handler
 	err = request_any_context_irq(
       irq_num,
-      up_key_interrupt_handler,	
+      up_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -280,25 +288,25 @@ int request_pins(struct keyboard_pins *pins){
          irq_num, pins->up_key_pin);
       goto err_return_free_start;
 	}
-	
+
 	/* Request DOWN pin */
 	err = gpio_request_one(pins->down_key_pin, GPIOF_IN, DEVICE_NAME " gpio_key_down");
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request GPIO_DOWN_KEY pin %d.\n",
 		 pins->down_key_pin);
 	  goto err_return_free_up;
-	}	
+	}
 	irq_num = gpio_to_irq(pins->down_key_pin);	//Request interrupt number
 	if (irq_num < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request interrupt for GPIO_DOWN_KEY pin %d.\n",
 		 pins->down_key_pin);
 	  err = irq_num;
 	  goto err_return_free_up;
-	}			
+	}
 	pins->down_key_irq = irq_num;								//Match interrupt to handler
 	err = request_any_context_irq(
       irq_num,
-      down_key_interrupt_handler,	
+      down_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -308,26 +316,26 @@ int request_pins(struct keyboard_pins *pins){
          irq_num, pins->down_key_pin);
       goto err_return_free_up;
 	}
-	
-	
+
+
 	/* Request ESCAPE pin */
 	err = gpio_request_one(pins->escape_key_pin, GPIOF_IN, DEVICE_NAME " gpio_key_escape");
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request GPIO_ESCAPE_KEY pin %d.\n",
 		 pins->escape_key_pin);
 	  goto err_return_free_down;
-	}	
+	}
 	irq_num = gpio_to_irq(pins->escape_key_pin);	//Request interrupt number
 	if (irq_num < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request interrupt for GPIO_ESCAPE_KEY pin %d.\n",
 		 pins->escape_key_pin);
 	  err = irq_num;
 	  goto err_return_free_down;
-	}				
+	}
 	pins->escape_key_irq = irq_num;						//Match interrupt to handler
 	err = request_any_context_irq(
       irq_num,
-      escape_key_interrupt_handler,	
+      escape_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -337,7 +345,7 @@ int request_pins(struct keyboard_pins *pins){
          irq_num, pins->escape_key_pin);
       goto err_return_free_down;
 	}
-	
+
 	/* Request LEFT pin */
 	err = gpio_request_one(pins->left_key_pin, GPIOF_IN, DEVICE_NAME " gpio_key_left");
 	if (err < 0) {
@@ -351,11 +359,11 @@ int request_pins(struct keyboard_pins *pins){
 		 pins->left_key_pin);
 	  err = irq_num;
 	  goto err_return_free_escape;
-	}	
+	}
 	pins->left_key_irq = irq_num;									//Match interrupt to handler
 	err = request_any_context_irq(
       irq_num,
-      left_key_interrupt_handler,	
+      left_key_interrupt_handler,
       IRQF_TRIGGER_RISING | IRQF_DISABLED,
       DEVICE_NAME,
       (void*)dev
@@ -365,7 +373,7 @@ int request_pins(struct keyboard_pins *pins){
          irq_num, pins->left_key_pin);
       goto err_return_free_escape;
 	}
-	
+
 	return 0;		//Success
 
 err_return_free_escape:
@@ -383,4 +391,3 @@ err_return_free_vcc:
 err_return:
 	return err;
 }
-

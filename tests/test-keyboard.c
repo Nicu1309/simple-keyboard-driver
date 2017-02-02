@@ -9,7 +9,7 @@ static const char* path = "/dev/simple-keyboard";
 
 int main(void){
 	int fd,err;
-	char key[2];
+	char *key;
 
 	printf("Trying to use keyboard, opening device\n");
 
@@ -24,12 +24,12 @@ int main(void){
 	printf("Configuring device...\n");
 
 	/* Reset device */
-/*	err = ioctl(fd,IO_KEYBOARD_RESET);
+	err = ioctl(fd,IO_KEYBOARD_RESET);
 	if (fd < 0) {
 			printf("ERROR WHILE RESETING DEVICE!!!\n");
 			return -1;
 	}
-	printf("Reset device...\n");*/
+	printf("Reset device\n");
 
 	/* Configure device */
 	err = ioctl(fd,IO_KEYBOARD_CONFIG);
@@ -46,8 +46,7 @@ int main(void){
 			return -1;
 	}
 
-	key[1] = '\0';		//Convert into string
-	printf("Key pressed: %s\n",key);
+	printf("Key pressed: %c\n",*key);
 
 	return 0;
 }

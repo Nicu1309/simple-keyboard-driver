@@ -22,8 +22,8 @@
 
 int keyboard_init(void);
 void keyboard_exit(void);
-ssize_t keyboard_read(struct file *filp, char __user *buf, ssize_t count, loff_t *ppos);
-int keyboard_unlocked_ioctl (struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg);
+ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos);
+long keyboard_unlocked_ioctl (struct file *filp, unsigned int cmd, unsigned long arg);
 int keyboard_open(struct inode *inode, struct file *filp);
 int keyboard_release(struct inode *inode, struct file *filp);
 
@@ -119,8 +119,7 @@ int keyboard_open(struct inode *inode, struct file *filp){
 	return 0;
 }
 
-
-ssize_t keyboard_read(struct file *filp, char __user *buf, ssize_t count, loff_t *ppos){
+ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos){
 	/* Blocking IO */
 	struct keyboard_dev *local_dev = filp->private_data; /* device information */
 	unsigned long retval;
@@ -135,7 +134,7 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, ssize_t count, loff_t
 
 	printk(KERN_ALERT DEVICE_NAME ": Queueing reader\n");
 	/* Wait for key to be pressed through interrupt handler */
-	wait_event_interruptible(local_dev->readers_queue,(atomic_read(&local_dev->readers_count) > 0 && local_dev->key != UNDEFINED_KEY));
+	wait_event_interruptible(local_dev->readers_queue,(atomic_read(&local_dev->readers_count) > 0 && (local_dev->key != UNDEFINED_KEY)));
 
 	printk(KERN_ALERT DEVICE_NAME ": Awake reader \n");
 
@@ -153,13 +152,14 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, ssize_t count, loff_t
 	return retval;
 }
 
-int keyboard_unlocked_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg){
+long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	struct keyboard_dev *local_dev = filp->private_data; /* device information */
 	int ret;
 	printk(KERN_ALERT DEVICE_NAME ":INSIDE KERNEL CONFIGURING....\n");
 	printk(KERN_ALERT DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
+
 	switch (cmd) {				//TODO Would be great if could be added command for retrieving pin config
-		case KEYBOARD_RESET://Reset data
+		case IO_KEYBOARD_RESET://Reset data
 			printk(KERN_ALERT DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
 			if (atomic_read(&local_dev->readers_count) == 0) {
 				printk(KERN_ALERT DEVICE_NAME ": !!!!!!!!!!! Preset key !!!!!!! \n");
@@ -169,12 +169,13 @@ int keyboard_unlocked_ioctl(struct inode *inode, struct file *filp, unsigned int
 			} else ret = -EINVAL;
 			break;
 
-		case KEYBOARD_CONFIG://Configure pins, then arg is a pointer to keyboard_pins struct
+		case IO_KEYBOARD_CONFIG://Configure pins, then arg is a pointer to keyboard_pins struct
 			printk(KERN_ALERT DEVICE_NAME ": CONFIG DEVICE COMMAND RECEIVED \n");
 			printk(KERN_ALERT DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
 			if (local_dev->configured & 0x1) {
 				ret = -EINVAL;  //If already configured return
 			} else {
+				printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
 				ret = init_system(local_dev);
 				local_dev->configured = 0x1;
 			}
