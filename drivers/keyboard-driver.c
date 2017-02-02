@@ -140,13 +140,15 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t 
 
 	/* Decrement readers count and read key as this has been waken up */
 	pressed_key = local_dev->key;
+	printk(KERN_ALERT DEVICE_NAME ": HAN PULSADO LA TECLA: %c \n", pressed_key+'0');
 	if (!atomic_dec_and_test (&local_dev->readers_count)){
 			local_dev->key = UNDEFINED_KEY;	//All readers have already read the pressed key
 	}
 
 	/* Copy pressed key to user buffer */
 	pressed_key += '0';	//ASCII code of number
-	if (copy_to_user(buf, &pressed_key, NUM_CHARS_PER_KEY)) retval = -EFAULT;
+	printk(KERN_ALERT DEVICE_NAME ": DESPUES DE MODIFICAR HAN PULSADO LA TECLA: %c \n", pressed_key);
+	if (copy_to_user(buf, &pressed_key, sizeof(uint8_t))) retval = -EFAULT;
 	else retval = NUM_CHARS_PER_KEY;
 
 	return retval;

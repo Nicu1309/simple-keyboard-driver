@@ -9,7 +9,7 @@ static const char* path = "/dev/simple-keyboard";
 
 int main(void){
 	int fd,err;
-	char *key;
+	char key;
 
 	printf("Trying to use keyboard, opening device\n");
 
@@ -40,13 +40,13 @@ int main(void){
 	printf("Device configured\n");
 
 	/* Read from device */
-	err = read(fd,key,1);	//Read 1 byte
+	err = read(fd,&key,sizeof(char));	//Read 1 byte
 	if (fd < 0) {
 			printf("ERROR WHILE READING DEVICE!!!\n");
 			return -1;
 	}
 
-	printf("Key pressed: %c\n",*key+'0');
+	printf("Key pressed: %c\n",key);
 
 	return 0;
 }
