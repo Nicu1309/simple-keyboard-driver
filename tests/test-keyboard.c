@@ -46,7 +46,7 @@ int main(void){
 			return -1;
 	}
 
-	printf("Key pressed: %c\n",*key);
+	printf("Key pressed: %c\n",*key+'0');
 
 	return 0;
 }

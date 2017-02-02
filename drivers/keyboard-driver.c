@@ -29,7 +29,7 @@ int keyboard_release(struct inode *inode, struct file *filp);
 
 static dev_t devno;
 static atomic_t tmp_atomic = ATOMIC_INIT(0);
-static struct keyboard_dev *dev;	//Keyboard device custom data
+struct keyboard_dev *dev;	//Keyboard device custom data
 static struct class* keyboard_class;	//Class for /sys/
 
 static struct file_operations keyboard_fops = {	//Struct for operations
@@ -176,7 +176,7 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				ret = -EINVAL;  //If already configured return
 			} else {
 				printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
-				ret = init_system(local_dev);
+				ret = init_system(filp->private_data);
 				local_dev->configured = 0x1;
 			}
 			break;

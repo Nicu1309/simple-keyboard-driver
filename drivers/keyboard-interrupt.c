@@ -7,26 +7,26 @@
 #include <linux/ioport.h>
 #include <asm/io.h>
 
-#include "keyboard-interrupt.h"
 #include "keyboard-driver.h"
+#include "keyboard-interrupt.h"
 
 static struct keyboard_dev *dev;
 #define AM33XX_CONTROL_BASE 0x44e10000
 
-static const uint32_t pins8_offset[47] = {0,0,0x818,0x81C,0x808,0x80C,0,0,0,0,0x834,0x830,0,0x828,0x83C,0x838,0x82C,0x88C,0,0x884,0x880,0x814,0x810,0x804,0x800,0x87C,0x8E0,0x8E8,0x8E4,0x8EC,0,0,0,0,0,0,0,0,0x8B8,0x8BC,0x8B4,0x8B0,0x8A8,0x8AC,0x8A0,0x8A4};
+static const uint32_t pins8_offset[47] = {0,0,0,0x818,0x81C,0x808,0x80C,0,0,0,0,0x834,0x830,0,0x828,0x83C,0x838,0x82C,0x88C,0,0x884,0x880,0x814,0x810,0x804,0x800,0x87C,0x8E0,0x8E8,0x8E4,0x8EC,0,0,0,0,0,0,0,0,0x8B8,0x8BC,0x8B4,0x8B0,0x8A8,0x8AC,0x8A0,0x8A4};
 
-static const uint32_t pins8_value[47] = {0,0,38,39,34,35,0,0,0,0,45,44,0,26,47,46,27,65,0,63,62,37,36,33,32,61,86,88,87,89,0,0,0,0,0,0,0,0,76,77,74,75,72,73,70,71};
+static const uint32_t pins8_value[47] = {0,0,0,38,39,34,35,0,0,0,0,45,44,0,26,47,46,27,65,0,63,62,37,36,33,32,61,86,88,87,89,0,0,0,0,0,0,0,0,76,77,74,75,72,73,70,71};
 
-static const uint32_t pins9_offset[47] = {0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const uint32_t pins9_offset[47] = {0,0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-static const uint32_t pins9_value[47] = {0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const uint32_t pins9_value[47] = {0,0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
 
 irqreturn_t right_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=RIGHT;
-	gpio_set_value(data->pins->right_key_pin, 0);
+	gpio_set_value(data->pins.right_key_pin, 0);
 	wake_up_interruptible(&data->readers_queue);
 
 	return IRQ_HANDLED;
@@ -35,7 +35,7 @@ irqreturn_t right_key_interrupt_handler(int irq, void* dev_id){
 irqreturn_t start_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=START;
-	gpio_set_value(data->pins->start_key_pin, 0);
+	gpio_set_value(data->pins.start_key_pin, 0);
    	wake_up_interruptible(&data->readers_queue);
 	return IRQ_HANDLED;
 }
@@ -43,7 +43,7 @@ irqreturn_t start_key_interrupt_handler(int irq, void* dev_id){
 irqreturn_t up_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=UP;
-	gpio_set_value(data->pins->up_key_pin, 0);
+	gpio_set_value(data->pins.up_key_pin, 0);
    	wake_up_interruptible(&data->readers_queue);
 	return IRQ_HANDLED;
 }
@@ -51,7 +51,7 @@ irqreturn_t up_key_interrupt_handler(int irq, void* dev_id){
 irqreturn_t down_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=DOWN;
-	gpio_set_value(data->pins->down_key_pin, 0);
+	gpio_set_value(data->pins.down_key_pin, 0);
    	wake_up_interruptible(&data->readers_queue);
 	return IRQ_HANDLED;
 }
@@ -59,7 +59,7 @@ irqreturn_t down_key_interrupt_handler(int irq, void* dev_id){
 irqreturn_t escape_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=ESCAPE;
-	gpio_set_value(data->pins->escape_key_pin, 0);
+	gpio_set_value(data->pins.escape_key_pin, 0);
    	wake_up_interruptible(&data->readers_queue);
 	return IRQ_HANDLED;
 }
@@ -67,15 +67,16 @@ irqreturn_t escape_key_interrupt_handler(int irq, void* dev_id){
 irqreturn_t left_key_interrupt_handler(int irq, void* dev_id){
 	struct keyboard_dev *data = (struct keyboard_dev*)dev_id;
 	data->key=LEFT;
-	gpio_set_value(data->pins->left_key_pin, 0);
+	gpio_set_value(data->pins.left_key_pin, 0);
    	wake_up_interruptible(&data->readers_queue);
 	return IRQ_HANDLED;
 }
 
 int setup_pinmux(struct keyboard_pins *k_pins)
 {
+	 uint32_t probe_pin;
    int i;
-   static u32 pins[] = { 					// offsets in AM335x ref man Table 9-10, upon pin names
+	 u32 pins[] = { 					// offsets in AM335x ref man Table 9-10, upon pin names
 			 					// pin names: from table/mode0 in BB ref manual
 	0,
 	OUTPUT_PULLUP,                					//	mode 7 (gpio), PULLUP, OUTPUT
@@ -93,7 +94,8 @@ int setup_pinmux(struct keyboard_pins *k_pins)
 	INPUT_PULLDOWN,							//      mode 7 (gpio), PULLDOWN, INPUT
 
    };
-
+	printk(KERN_ALERT DEVICE_NAME ": DONE WITH PIN ARRAY \n");
+	printk(KERN_ALERT DEVICE_NAME ": POPULATE ARRAY WITH PIN NUMBERS \n");
 	/* This population must be done this way as C does not take them as constants */
 	pins[0] = (AM33XX_CONTROL_BASE + pins9_offset[GPIO_VCC]);   			// VCC Pin -> Will serve as power for keyboard
 	pins[2] = (AM33XX_CONTROL_BASE + pins9_offset[GPIO_KEY_RIGHT]);	   	// RIGHT_KEY Pin ->    will be interrupt
@@ -103,10 +105,10 @@ int setup_pinmux(struct keyboard_pins *k_pins)
 	pins[10] = (AM33XX_CONTROL_BASE + pins9_offset[GPIO_KEY_ESCAPE]);   	// ESCAPE_KEY Pin ->    will be interrupt
 	pins[12] = (AM33XX_CONTROL_BASE + pins9_offset[GPIO_KEY_LEFT]);   	// LEFT_KEY Pin ->    will be interrupt
 
-
+	printk(KERN_ALERT DEVICE_NAME ": DONE WITH POPULATING PIN NUMBERS \n");
    for (i=0; i<GPIO_USED_NUM*2; i+=2) {	// map the mapped i/o addresses to kernel high memory
       void* addr = ioremap(pins[i], 4);
-
+			printk(KERN_ALERT DEVICE_NAME ": GPIO NUMBER %d\n",pins[i]);
       if (NULL == addr)
          return -EBUSY;
 
@@ -114,7 +116,11 @@ int setup_pinmux(struct keyboard_pins *k_pins)
       iounmap(addr);
    }
 
+	 printk(KERN_ALERT DEVICE_NAME ": STARTING POPULATING PIN FIELDS WITHIN PIN STRUCT \n");
 	/* Populate pin fields */
+	probe_pin = pins9_value[GPIO_VCC];
+	printk(KERN_ALERT DEVICE_NAME ": THE VALUE FOR PIN VCC IS %d \n",probe_pin);
+	printk(KERN_ALERT DEVICE_NAME ": THE VALUE WITHIN THE STRUCTURE FOR VCC_PIN IS: %d", k_pins->vcc_pin);
 	k_pins->vcc_pin = pins9_value[GPIO_VCC];
 	k_pins->right_key_pin = pins9_value[GPIO_KEY_RIGHT];
 	k_pins->start_key_pin = pins9_value[GPIO_KEY_START];
@@ -133,14 +139,14 @@ int init_system(struct keyboard_dev *device){
 	dev = device; //Store pointer to device struct
 
 	printk(KERN_ALERT DEVICE_NAME ": SETTING UP PINMUX.. \n");
- 	err = setup_pinmux(dev->pins);
+ 	err = setup_pinmux(&device->pins);
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to apply pinmux settings.\n");
 	  goto err_return;
 	}
 
 	printk(KERN_ALERT DEVICE_NAME ": REQUESTING PINS... \n");
-	err = request_pins(dev->pins);
+	err = request_pins(&device->pins);
 	if (err < 0) {
 	  printk(KERN_ALERT DEVICE_NAME " : failed to request GPIOS.\n");
 	  goto err_return;
@@ -152,37 +158,37 @@ err_return:
 
 int shutdown_system(void){
 	/* VCC PIN */
-	gpio_free(dev->pins->vcc_pin);
+	gpio_free(dev->pins.vcc_pin);
 
 	/* RIGHT KEY PIN */
-	disable_irq(dev->pins->right_key_irq);
-	free_irq(dev->pins->right_key_irq, (void*)dev);
-	gpio_free(dev->pins->right_key_pin);
+	disable_irq(dev->pins.right_key_irq);
+	free_irq(dev->pins.right_key_irq, (void*)dev);
+	gpio_free(dev->pins.right_key_pin);
 
 	/*START KEY PIN*/
-	disable_irq(dev->pins->start_key_irq);
-	free_irq(dev->pins->start_key_irq,(void*)dev);
-	gpio_free(dev->pins->start_key_pin);
+	disable_irq(dev->pins.start_key_irq);
+	free_irq(dev->pins.start_key_irq,(void*)dev);
+	gpio_free(dev->pins.start_key_pin);
 
 	/*UP KEY PIN*/
-	disable_irq(dev->pins->up_key_irq);
-	free_irq(dev->pins->up_key_irq,(void*)dev);
-	gpio_free(dev->pins->up_key_pin);
+	disable_irq(dev->pins.up_key_irq);
+	free_irq(dev->pins.up_key_irq,(void*)dev);
+	gpio_free(dev->pins.up_key_pin);
 
 	/*DOWN KEY PIN*/
-	disable_irq(dev->pins->down_key_irq);
-	free_irq(dev->pins->down_key_irq,(void*)dev);
-	gpio_free(dev->pins->down_key_pin);
+	disable_irq(dev->pins.down_key_irq);
+	free_irq(dev->pins.down_key_irq,(void*)dev);
+	gpio_free(dev->pins.down_key_pin);
 
 	/*ESCAPE KEY PIN*/
-	disable_irq(dev->pins->escape_key_irq);
-	free_irq(dev->pins->escape_key_irq,(void*)dev);
-	gpio_free(dev->pins->escape_key_pin);
+	disable_irq(dev->pins.escape_key_irq);
+	free_irq(dev->pins.escape_key_irq,(void*)dev);
+	gpio_free(dev->pins.escape_key_pin);
 
 	/*LEFT KEY PIN*/
-	disable_irq(dev->pins->left_key_irq);
-	free_irq(dev->pins->left_key_irq,(void*)dev);
-	gpio_free(dev->pins->left_key_pin);
+	disable_irq(dev->pins.left_key_irq);
+	free_irq(dev->pins.left_key_irq,(void*)dev);
+	gpio_free(dev->pins.left_key_pin);
 
 	return 0;
 

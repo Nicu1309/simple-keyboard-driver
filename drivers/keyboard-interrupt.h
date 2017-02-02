@@ -39,15 +39,6 @@
 #define GPIO_KEY_LEFT 27
 #define GPIO_USED_NUM 7	//Number of used gpio pins
 
-struct keyboard_dev {
-	uint8_t key;
-	wait_queue_head_t readers_queue;
-	struct cdev cdev;
-	atomic_t readers_count;
-	uint8_t configured	:1;
-	struct keyboard_pins *pins;
-};
-
 struct keyboard_pins {
 	uint8_t vcc_pin;
 	uint16_t right_key_irq;
@@ -62,6 +53,15 @@ struct keyboard_pins {
 	uint8_t escape_key_pin;
 	uint16_t left_key_irq;
 	uint8_t left_key_pin;
+};
+
+struct keyboard_dev {
+	uint8_t key;
+	wait_queue_head_t readers_queue;
+	struct cdev cdev;
+	atomic_t readers_count;
+	uint8_t configured	:1;
+	struct keyboard_pins pins;
 };
 
 int setup_pinmux(struct keyboard_pins *k_pins);
