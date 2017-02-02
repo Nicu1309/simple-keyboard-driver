@@ -9,9 +9,8 @@
 #include <linux/time.h>
 #include <linux/ioport.h>
 #include <asm/io.h>
-
+#include <linux/atomic.h>
 #include <linux/cdev.h>
-#include <linux/spinlock.h>
 #include <linux/wait.h>
 
 #include "keyboard-driver.h"
@@ -23,10 +22,10 @@
  * Bit 1 |- Mode
  * Bit 0 /
 */
-#define OUTPUT_PULLUP 0x7 | (2 << 3)			  
+#define OUTPUT_PULLUP 0x7 | (2 << 3)
 #define INPUT_PULLUP 0x7 | (2 << 3) | (1 << 5)
 #define OUTPUT_PULLDOWN 0x7
-#define INPUT_PULLDOWN 0x7 | (1 << 5) 
+#define INPUT_PULLDOWN 0x7 | (1 << 5)
 
 /* These are the PIN NUMBERS
  * If header changes, then these numbers must change to as well as the offset/value arrays used in "keyboard-interrupt.c"
@@ -44,8 +43,7 @@ struct keyboard_dev {
 	uint8_t key;
 	wait_queue_head_t readers_queue;
 	struct cdev cdev;
-	spinlock_t lock;
-	unsigned int readers_count;
+	atomic_t readers_count;
 	uint8_t configured	:1;
 	struct keyboard_pins *pins;
 };
