@@ -43,8 +43,7 @@
 struct keyboard_dev {
 	uint8_t key;
 	wait_queue_head_t readers_queue;
-	struct device *device_prt;
-	struct cdev *cdev;
+	struct cdev cdev;
 	spinlock_t lock;
 	unsigned int readers_count;
 	uint8_t configured	:1;

@@ -35,6 +35,7 @@ static struct file_operations keyboard_fops = {	//Struct for operations
 
 int keyboard_init(void){
 	int err, major;
+	unsigned long dc;
 	
 	err = alloc_chrdev_region(&devno,0,COUNT,DEVICE_NAME);		//Obtain device number	
 
@@ -47,16 +48,19 @@ int keyboard_init(void){
 	printk(KERN_INFO DEVICE_NAME ": Device successfully allocated, major number: %d \n", major);	
 
 	/* Create class for device */
-	err = keyboard_class = class_create(THIS_MODULE, DEVICE_NAME);	
-	if (err < 0){
+	keyboard_class = class_create(THIS_MODULE, DEVICE_NAME);	
+	if (keyboard_class < 0){
+		unregister_chrdev_region(devno,COUNT);
 		printk(KERN_ALERT DEVICE_NAME ": Unable to create class for device\n");
 		return err;
 	} 	
 	
 	dev = kmalloc(sizeof(struct keyboard_dev), GFP_KERNEL);	//Allocate memory for the device struct, GFP_KERNEL flag for kernel context
 	
-	err = device_create(keyboard_class, NULL, devno, NULL, DEVICE_NAME);
-	if (err < 0){
+	dc = device_create(keyboard_class, NULL, devno, NULL, DEVICE_NAME);
+	if (dc < 0){
+		class_destroy(keyboard_class);
+        	unregister_chrdev_region(devno,COUNT);
 		printk(KERN_ALERT DEVICE_NAME ": Unable to create device from class\n");
 		return err;
 	} 
@@ -73,8 +77,11 @@ int keyboard_init(void){
 	spin_lock_init(&dev->lock);
 	init_waitqueue_head(&dev->readers_queue);
 	
-	err = cdev_add(&(dev->cdev),devno,1);	//Register char device into kernel
+	err = cdev_add(&dev->cdev,devno,1);	//Register char device into kernel
 	if (err < 0){
+		device_destroy(keyboard_class,devno);
+		class_destroy(keyboard_class);
+        	unregister_chrdev_region(devno,COUNT);
 		printk(KERN_ALERT DEVICE_NAME ": Unable to register char device\n");
 		return err;
 	} 
@@ -165,26 +172,31 @@ int keyboard_release(struct inode *inode, struct file *filp){
 void keyboard_exit(void){
 	
 	/* Delete char device from kernel space */
-	printk(KERN_INFO DEVICE_NAME ": Deleting char device...\n");		
+	printk(KERN_ALERT DEVICE_NAME ": Deleting char device...\n");		
 	cdev_del(&dev->cdev);
-	printk(KERN_INFO DEVICE_NAME ": Char device deleted\n");	
+	printk(KERN_ALERT DEVICE_NAME ": Char device deleted\n");	
 	
 	/* Free memory used */
-	printk(KERN_INFO DEVICE_NAME ": Freeing memory...\n");
+	printk(KERN_ALERT DEVICE_NAME ": Freeing memory...\n");
 	kfree(dev);	
-	printk(KERN_INFO DEVICE_NAME ": Memory freed\n");
+	printk(KERN_ALERT DEVICE_NAME ": Memory freed\n");
 	
 	/* Destroy class from /sys */
-	printk(KERN_INFO DEVICE_NAME ": Destroying class from /sys/ ...\n");
+	printk(KERN_ALERT DEVICE_NAME ": Destroying class from /sys/ ...\n");
 	class_destroy(keyboard_class);	
-	printk(KERN_INFO DEVICE_NAME ": Class destroyed\n");
+	printk(KERN_ALERT DEVICE_NAME ": Class destroyed\n");
+
+	/* Destroy device from /sys */
+	printk(KERN_ALERT DEVICE_NAME ": Destroying device from /sys/ ...\n");
+	device_destroy(keyboard_class,devno);	
+	printk(KERN_ALERT DEVICE_NAME ": Device destroyed\n");
 
 	/* Unregister device */
-	printk(KERN_INFO DEVICE_NAME ": Unregistering driver...\n");
+	printk(KERN_ALERT DEVICE_NAME ": Unregistering driver...\n");
 	unregister_chrdev_region(devno,COUNT);
-	printk(KERN_INFO DEVICE_NAME ": Driver unregistered succesfully\n");
+	printk(KERN_ALERT DEVICE_NAME ": Driver unregistered succesfully\n");
 
-	printk(KERN_INFO DEVICE_NAME ": EXITING MODULE NOW!\n");
+	printk(KERN_ALERT DEVICE_NAME ": EXITING MODULE NOW!\n");
 	
 	return;
 }
