@@ -2,7 +2,7 @@
 #define keyboard_driver_h
 
 #define AUTHOR "David Nicuesa Aranda | david.nicuesa.aranda@gmail.com"
-#define DEVICE_NAME "keyboard"
+#define DEVICE_NAME "simple-keyboard"
 #define LICENSE "Dual BSD/GPL"
 #define DESCRIPTION "This module is intended to include a driver for the simple keyboard on the BeagleBone"
 #define VERSION "1.0"

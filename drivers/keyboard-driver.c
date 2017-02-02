@@ -180,16 +180,16 @@ void keyboard_exit(void){
 	printk(KERN_ALERT DEVICE_NAME ": Freeing memory...\n");
 	kfree(dev);	
 	printk(KERN_ALERT DEVICE_NAME ": Memory freed\n");
-	
-	/* Destroy class from /sys */
-	printk(KERN_ALERT DEVICE_NAME ": Destroying class from /sys/ ...\n");
-	class_destroy(keyboard_class);	
-	printk(KERN_ALERT DEVICE_NAME ": Class destroyed\n");
 
 	/* Destroy device from /sys */
 	printk(KERN_ALERT DEVICE_NAME ": Destroying device from /sys/ ...\n");
 	device_destroy(keyboard_class,devno);	
 	printk(KERN_ALERT DEVICE_NAME ": Device destroyed\n");
+	
+	/* Destroy class from /sys */
+	printk(KERN_ALERT DEVICE_NAME ": Destroying class from /sys/ ...\n");
+	class_destroy(keyboard_class);	
+	printk(KERN_ALERT DEVICE_NAME ": Class destroyed\n");
 
 	/* Unregister device */
 	printk(KERN_ALERT DEVICE_NAME ": Unregistering driver...\n");

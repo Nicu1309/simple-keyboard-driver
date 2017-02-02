@@ -7,7 +7,7 @@
 #include "keyboard-driver.h"
 #include "keyboard-interrupt.h"
 
-static const char* path = "/dev/keyboard";
+static const char* path = "/dev/simple-keyboard";
 
 int main(void){
 	int fd,err;
