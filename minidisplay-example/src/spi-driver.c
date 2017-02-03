@@ -1,5 +1,14 @@
+#include <stdint.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
+#include <stdbool.h>
 #include "spi-driver.h"
 
 #define pabort(s) {perror(s); abort();}
@@ -55,7 +64,7 @@ int SPIInit(int devNo, int bpw, int speedl) {
 
 int SPIWriteWord(void *data)
 {
-    int i = write(fd, data, (int)ceil(bits / 8.0));
+    int i = write(fd, data, (int)(bits / 8.0)+1);
     if (i == -1)
         return SPI_WRITE_ERROR;
 
@@ -70,13 +79,4 @@ int SPIWriteChunk(void *data, int count)
 	  return SPI_WRITE_ERROR;
 
    return 0;
-}
-
-int SPIWriteIn(void *data, int count, int pos)
-{
-	lseek(fd, pos, SEEK_END);
-	int i = write(fd, data, count);
-   	if(i == -1)
-		return SPI_WRITE_ERROR;
-	return 0;
 }

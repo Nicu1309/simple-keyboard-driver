@@ -38,18 +38,18 @@ static int initResetPin(){
 	FILE* ex = fopen("/sys/class/gpio/export","w");
 	fprintf(ex,"49");
 	fclose(ex);
-	
+
 	if(errno!=0)
 		errno=0;
-		
+
 	FILE* pindir = fopen("/sys/class/gpio/gpio49/direction","w");
 	fprintf(pindir,"out");
 	fclose(pindir);
-	
+
 	FILE* pinval = fopen("/sys/class/gpio/gpio49/value","w");
 	fprintf(pinval,"0");
 	fclose(pinval);
-	
+
 	return ret;
 }
 
@@ -72,11 +72,11 @@ int LCDSendCommand(int len, ...){
 	va_list ap;
 
 	va_start(ap, len);
-	
+
 	Transfer *transfer_buffer = (Transfer *)malloc(sizeof(Transfer)*len);
 	int ret = 0;
 	int repack = 0;
-		
+
 	for(repack=0;repack<len;repack++){
 		int data = va_arg(ap, int);
 		transfer_buffer[repack].data = (uint8_t)data;
@@ -88,7 +88,7 @@ int LCDSendCommand(int len, ...){
 	}
 
 	ret = SPIWriteChunk(transfer_buffer, len*sizeof(Transfer));
-	
+
 	va_end(ap);
 
 	free(transfer_buffer);
@@ -104,13 +104,14 @@ void init_tft(int deviceNum) {
 	if(ret == -1){
 		pabort("Unable to initialize reset PIN");
 	}
-	
+
 	ret = SPIInit(deviceNum, 9, SPISpeed);
 	if(ret < 0){
 		pabort("Unable to initialize SPI");
 	}
 
 	//***************************RESET LCD Driver*******************************
+									/* COUNTING ON RESET SIGNAL IS ACTIVE LOW */
 	// SET RST Pin high
 	resetSet();
 	usleep(1000);
@@ -123,12 +124,14 @@ void init_tft(int deviceNum) {
 	resetSet();
 	usleep(120000);
 
+												/* ALREADY RESET */
+
 	LCDSendCommand(1, 0x11); // Sleep out and charge pump on
 	usleep(120000);
 
 	LCDSendCommand(4, 0xB1, 0x02, 0x25, 0x36); //SETPWCTR
 
-	LCDSendCommand(4, 0xB2, 0x02, 0x35, 0x36); //SETDISPLAY	
+	LCDSendCommand(4, 0xB2, 0x02, 0x35, 0x36); //SETDISPLAY
 
 	LCDSendCommand(7, 0xB3, 0x02, 0x35, 0x36, 0x02, 0x35, 0x36); //Doesn't exist
 
@@ -157,7 +160,7 @@ void init_tft(int deviceNum) {
 
 }
 
-	
+
 void setOrientation(int orientation) {
 	switch(orientation) {
 		case 0:
@@ -167,7 +170,7 @@ void setOrientation(int orientation) {
 			break;
 		case 1:
 		       	LCDSendCommand(5, 0x2A, 0x00, 0x03, 0x00, 0x82);
-			LCDSendCommand(5, 0x2B, 0x00, 0x02, 0x00, 0x81);	
+			LCDSendCommand(5, 0x2B, 0x00, 0x02, 0x00, 0x81);
 			LCDSendCommand(2, 0x36, 0xE0);
 			break;
 		case 2:
@@ -175,7 +178,7 @@ void setOrientation(int orientation) {
 			LCDSendCommand(5, 0x2B, 0x00, 0x03, 0x00, 0x82);
 			LCDSendCommand(2, 0x36, 0x80);
 			break;
-		case 3: 
+		case 3:
 			LCDSendCommand(5, 0x2A, 0x00, 0x01, 0x00, 0x80);
 			LCDSendCommand(5, 0x2B, 0x00, 0x02, 0x00, 0x81);
 			LCDSendCommand(2, 0x36, 0x20);
@@ -194,7 +197,7 @@ void fillScreenRandom(){
 	for(i=0;i<49152;i++){
 		fread(&inbyte, 1, 1, random);
 		tbuffer[i].data = inbyte;
-		tbuffer[i].type = 1;	
+		tbuffer[i].type = 1;
 	}
 
 	void *buff_ptr = tbuffer;
@@ -229,36 +232,10 @@ void *buff_ptr = tbuffer;
 	tbuffer[2].type=1;
 
 	SPIWriteChunk(buff_ptr, 6);
-	usleep(1000000);
+
     }
 
 }
-
-
-void limpiarPixel(){
-	int i = width * height;
-	Transfer tbuffer[7];
-	tbuffer[0].data = 0xff;
-	tbuffer[0].type = 1;
-	tbuffer[1].data = 0xff;
-	tbuffer[1].type = 1;
-	tbuffer[2].data = 0xff;
-	tbuffer[2].type = 1;
-	while(i-- > 0){
-		SPIWriteChunk(&tbuffer[0], 6);
-	}
-
-	tbuffer[0].data = 0x00;
-	tbuffer[1].data = 0x00;
-	tbuffer[2].data = 0x00;
-	SPIWriteIn(&tbuffer[0], 6, 50);
-	SPIWriteIn(&tbuffer[0], 6, 60);
-	SPIWriteIn(&tbuffer[0], 6, 64);
-	SPIWriteIn(&tbuffer[0], 6, 16);
-	SPIWriteIn(&tbuffer[0], 6, 512);
-	SPIWriteIn(&tbuffer[0], 6, 128);
-}
-
 
 void fillScreenBars(){
     int i = 0;
@@ -268,7 +245,7 @@ void fillScreenBars(){
 
     for(i=0;i<49152;i++){
         if(((i%3) == 0 && (i%384)>=256) ||
-           ((i%3) == 1 && (i%384)>=128 && (i%384)<256) || 
+           ((i%3) == 1 && (i%384)>=128 && (i%384)<256) ||
            ((i%3) == 2 && (i%384)<128)){
             tbuffer[i].data = 0xFF;
             tbuffer[i].type = 1;
@@ -287,11 +264,10 @@ void fillScreenBars(){
 
 int main(void){
 	init_tft(0);
-	setOrientation(0);
-	fillScreenBars();
+	//setOrientation(0);
+	//fillScreenBars();
 	sleep(5);
 	//displayimage();
-	limpiarPixel();
 
 	return 0;
 }

@@ -9,12 +9,13 @@
 
     /* version */
     version = "00A0";
-	
 
-/* state the resources this cape uses */
+
+/* state the resources this cape uses, we don not care about MISO since we just send data to peripheral(MOSI pin)
+ * in addition, we need a pin connected to reset LCD */
 	exclusive-use =
 		/* the pin header uses */
-		"P9.23",	/* lcd: gpio1_17 */
+		"P9.23",	/* lcd_reset: gpio1_17 */
 		"P9.22",	/* spi: spi0_sclk */
 		"P9.18",	/* spi: spi0_d1 */
 		"P9.17",	/* spi: spi0_cs0 */
@@ -27,7 +28,7 @@
         __overlay__ {
             spi0_pins_s0: spi0_pins_s0 {
                 pinctrl-single,pins = <
-                  0x044 0x10 /* LCD_RESET, OUTPUT_PULLUP | MODE0 */
+                  0x044 0x10 /* LCD_RESET, OUTPUT_PULLUP | MODE0 | Pullup because it is active low */
                   0x150 0x30 /* spi0_sclk, INPUT_PULLUP | MODE0 */
                   0x158 0x10 /* spi0_d1, OUTPUT_PULLUP | MODE0 */
                   0x15c 0x10 /* spi0_cs0, OUTPUT_PULLUP | MODE0 */

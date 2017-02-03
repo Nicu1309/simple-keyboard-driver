@@ -12,5 +12,5 @@
 int SPIInit(int devno, int bpw, int speed);
 int SPIWriteWord(void *data);
 int SPIWriteChunk(void *data, int count);
-int SPIWriteIn(void *data, int count, int pos);
+
 #endif

@@ -37,9 +37,13 @@
 #define GPIO_KEY_DOWN 17
 #define GPIO_KEY_ESCAPE 25
 #define GPIO_KEY_LEFT 27
+#define GPIO_POLL_IRQ 0
 #define GPIO_USED_NUM 7	//Number of used gpio pins
 
 struct keyboard_pins {
+	uint8_t is_pollable :1;		//Indicates if get data comes from polling or interrupt
+	uint8_t poll_interrupt_pin;
+	uint16_t poll_interrupt_irq;
 	uint8_t vcc_pin;
 	uint16_t right_key_irq;
 	uint8_t right_key_pin;
@@ -64,16 +68,7 @@ struct keyboard_dev {
 	struct keyboard_pins pins;
 };
 
-int setup_pinmux(struct keyboard_pins *k_pins);
-irqreturn_t start_key_interrupt_handler(int irq, void* dev_id);
-irqreturn_t escape_key_interrupt_handler(int irq, void* dev_id);
-irqreturn_t up_key_interrupt_handler(int irq, void* dev_id);
-irqreturn_t down_key_interrupt_handler(int irq, void* dev_id);
-irqreturn_t right_key_interrupt_handler(int irq, void* dev_id);
-irqreturn_t left_key_interrupt_handler(int irq, void* dev_id);
-
 int init_system(struct keyboard_dev *);
-int request_pins(struct keyboard_pins *pins);
 int shutdown_system(void);
 
 
