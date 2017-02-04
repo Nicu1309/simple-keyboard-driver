@@ -49,7 +49,7 @@ int keyboard_init(void){
 
 	/* Check if device allocation is succesful */
 	if (err < 0){
-		printk(KERN_WARNING DEVICE_NAME ": Unable to obtain major number\n");
+		printk(KERN_DEBUG DEVICE_NAME ": Unable to obtain major number\n");
 		return err;
 	}
 	major = MAJOR(devno);
@@ -221,31 +221,31 @@ void keyboard_exit(void){
 	shutdown_system();
 
 	/* Delete char device from kernel space */
-	printk(KERN_DEBUG DEVICE_NAME ": Deleting char device...\n");
+	printk(KERN_INFO DEVICE_NAME ": Deleting char device...\n");
 	cdev_del(&dev->cdev);
-	printk(KERN_DEBUG DEVICE_NAME ": Char device deleted\n");
+	printk(KERN_INFO DEVICE_NAME ": Char device deleted\n");
 
 	/* Free memory used */
-	printk(KERN_DEBUG DEVICE_NAME ": Freeing memory...\n");
+	printk(KERN_INFO DEVICE_NAME ": Freeing memory...\n");
 	kfree(dev);
-	printk(KERN_DEBUG DEVICE_NAME ": Memory freed\n");
+	printk(KERN_INFO DEVICE_NAME ": Memory freed\n");
 
 	/* Destroy device from /sys */
-	printk(KERN_DEBUG DEVICE_NAME ": Destroying device from /sys/ ...\n");
+	printk(KERN_INFO DEVICE_NAME ": Destroying device from /sys/ ...\n");
 	device_destroy(keyboard_class,devno);
-	printk(KERN_DEBUG DEVICE_NAME ": Device destroyed\n");
+	printk(KERN_INFO DEVICE_NAME ": Device destroyed\n");
 
 	/* Destroy class from /sys */
-	printk(KERN_DEBUG DEVICE_NAME ": Destroying class from /sys/ ...\n");
+	printk(KERN_INFO DEVICE_NAME ": Destroying class from /sys/ ...\n");
 	class_destroy(keyboard_class);
-	printk(KERN_DEBUG DEVICE_NAME ": Class destroyed\n");
+	printk(KERN_INFO DEVICE_NAME ": Class destroyed\n");
 
 	/* Unregister device */
-	printk(KERN_DEBUG DEVICE_NAME ": Unregistering driver...\n");
+	printk(KERN_INFO DEVICE_NAME ": Unregistering driver...\n");
 	unregister_chrdev_region(devno,COUNT);
-	printk(KERN_DEBUG DEVICE_NAME ": Driver unregistered succesfully\n");
+	printk(KERN_INFO DEVICE_NAME ": Driver unregistered succesfully\n");
 
-	printk(KERN_DEBUG DEVICE_NAME ": EXITING MODULE NOW!\n");
+	printk(KERN_INFO DEVICE_NAME ": EXITING MODULE NOW!\n");
 
 	return;
 }

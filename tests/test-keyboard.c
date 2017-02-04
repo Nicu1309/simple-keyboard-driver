@@ -30,10 +30,12 @@ int main(int argc, char *argv[]){
 	printf("Configuring device...\n");
 
 	/* Check irqs mode */
-	if (argv[1] == "s"){
+	if (strcmp(argv[1],"s") == 0){
 		cmd = IO_KEYBOARD_CONFIG_SINGLE_LINE;
+		printf("Single line configured\n");
 	} else {
 		cmd = IO_KEYBOARD_CONFIG_MULTI_LINE;
+		printf("Multi line configured\n");
 	}
 	/* Reset device */
 	err = ioctl(fd,IO_KEYBOARD_RESET);
