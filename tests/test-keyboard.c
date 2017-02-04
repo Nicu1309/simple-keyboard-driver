@@ -3,9 +3,19 @@
 #include <stdint.h>
 #include <fcntl.h>
 
-#include "../drivers/keyboard-driver.h"
+#include "../drivers/keyboard-public.h"
 
 static const char* path = "/dev/simple-keyboard";
+static struct pin_conf custom_pinmux = {
+	.irq_pin = 932,
+	.vcc_pin = 911,
+	.right_key_pin = 912,
+	.start_key_pin = 913,
+	.up_key_pin = 914,
+	.down_key_pin = 917,
+	.escape_key_pin = 925,
+	.left_key_pin = 927,
+  };
 
 int main(int argc, char *argv[]){
 	int fd,err;
@@ -37,6 +47,7 @@ int main(int argc, char *argv[]){
 		cmd = IO_KEYBOARD_CONFIG_MULTI_LINE;
 		printf("Multi line configured\n");
 	}
+
 	/* Reset device */
 	err = ioctl(fd,IO_KEYBOARD_RESET);
 	if (fd < 0) {
@@ -44,6 +55,14 @@ int main(int argc, char *argv[]){
 			return -1;
 	}
 	printf("Reset device\n");
+
+	/* Configure custom pinmuxing  */
+	err = ioctl(fd,IO_KEYBOARD_CONFIG_PINMUX,&custom_pinmux);
+	if (fd < 0) {
+			printf("ERROR WHILE CUSTOMIZING PINMUX!!!\n");
+			return -1;
+	}
+	printf("Custom pinmux configured\n");
 
 	/* Configure device */
 	err = ioctl(fd,cmd);

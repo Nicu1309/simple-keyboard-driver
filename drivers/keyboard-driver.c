@@ -9,7 +9,6 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/fs.h>
-#include <linux/types.h>
 #include <linux/sched.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
@@ -17,8 +16,9 @@
 #include <linux/types.h>
 #include <asm/io.h>
 
-#include "keyboard-driver.h"
 #include "keyboard-interrupt.h"
+#include "keyboard-driver.h"
+#include "keyboard-public.h"
 
 int keyboard_init(void);
 void keyboard_exit(void);
@@ -40,10 +40,8 @@ static struct file_operations keyboard_fops = {	//Struct for operations
 };
 
 
-
 int keyboard_init(void){
 	int err, major;
-	unsigned long dc;
 
 	err = alloc_chrdev_region(&devno,0,COUNT,DEVICE_NAME);		//Obtain device number
 
@@ -67,10 +65,9 @@ int keyboard_init(void){
 
 	dev = kmalloc(sizeof(struct keyboard_dev), GFP_KERNEL);	//Allocate memory for the device struct, GFP_KERNEL flag for kernel context
 
-	dc = device_create(keyboard_class, NULL, devno, NULL, DEVICE_NAME);
-	if (dc < 0){
+	if (device_create(keyboard_class, NULL, devno, NULL, DEVICE_NAME) == 0){
 		class_destroy(keyboard_class);
-        	unregister_chrdev_region(devno,COUNT);
+    unregister_chrdev_region(devno,COUNT);
 		printk(KERN_DEBUG DEVICE_NAME ": Unable to create device from class\n");
 		return err;
 	}
@@ -94,7 +91,7 @@ int keyboard_init(void){
 	err = cdev_add(&dev->cdev,devno,1);	//Register char device into kernel
 
 	if (err < 0){
-		/* If error while registering then undo everything done before to register 
+		/* If error while registering then undo everything done before to register
 		 * device into the kernel
 		 */
 		device_destroy(keyboard_class,devno);
@@ -157,11 +154,13 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t 
 
 long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	struct keyboard_dev *local_dev = filp->private_data; /* device information */
+	struct pin_conf custom_pins;
 	int ret;
 	printk(KERN_DEBUG DEVICE_NAME ":INSIDE KERNEL CONFIGURING....\n");
 	printk(KERN_DEBUG DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
 
 	switch (cmd) {				//TODO Would be great if could be added command for retrieving pin config
+
 		case IO_KEYBOARD_RESET://Reset data
 			printk(KERN_DEBUG DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
 			if (atomic_read(&local_dev->readers_count) == 0 && (local_dev->configured)) {
@@ -173,7 +172,27 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			} else ret = -EINVAL;
 			break;
 
-		case IO_KEYBOARD_CONFIG_MULTI_LINE://Configure pins
+		case IO_KEYBOARD_CONFIG_PINMUX://Configure pin numbers
+		/* In this case, arg is a pointer to a pin_config struct */
+			printk(KERN_DEBUG DEVICE_NAME ": CONFIGURING SYSTEM PINMUXING  \n");
+			if (local_dev->configured) {
+				ret = -EINVAL;  //If already configured return
+			} else {
+				printk(KERN_DEBUG DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
+				if (!access_ok(VERIFY_READ, (const void *)arg, sizeof(custom_pins))){
+					ret = -EINVAL;
+				} else {
+						ret = copy_from_user(&custom_pins,(struct custom_pins*) arg, sizeof(struct pin_conf));
+						if (ret < 0) {
+							ret = -EFAULT;
+						} else {
+							ret = populate_config(&custom_pins);
+						}
+				}
+			}
+			break;
+
+		case IO_KEYBOARD_CONFIG_MULTI_LINE://Configure mode for multiple irqs
 			printk(KERN_DEBUG DEVICE_NAME ": CONFIGURING SYSTEM FOR MULTI IRQS MODE  \n");
 			if (local_dev->configured) {
 				ret = -EINVAL;  //If already configured return
@@ -187,7 +206,7 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			}
 			break;
 
-			case IO_KEYBOARD_CONFIG_SINGLE_LINE://Configure pins
+			case IO_KEYBOARD_CONFIG_SINGLE_LINE://Configure mode for single irq and polling
 				printk(KERN_DEBUG DEVICE_NAME ": CONFIGURING SYSTEM FOR SINGLE IRQS MODE  \n");
 				if (local_dev->configured) {
 					ret = -EINVAL;  //If already configured return
