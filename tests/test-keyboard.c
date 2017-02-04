@@ -7,9 +7,15 @@
 
 static const char* path = "/dev/simple-keyboard";
 
-int main(void){
+int main(int argc, char *argv[]){
 	int fd,err;
 	char key;
+	unsigned long cmd;
+
+	if (argc < 2){
+		printf("Not enough arguments\n");
+		return -1;
+	}
 
 	printf("Trying to use keyboard, opening device\n");
 
@@ -23,6 +29,12 @@ int main(void){
 	printf("Device opened succesfully\n");
 	printf("Configuring device...\n");
 
+	/* Check irqs mode */
+	if (argv[1] == "s"){
+		cmd = IO_KEYBOARD_CONFIG_SINGLE_LINE;
+	} else {
+		cmd = IO_KEYBOARD_CONFIG_MULTI_LINE;
+	}
 	/* Reset device */
 	err = ioctl(fd,IO_KEYBOARD_RESET);
 	if (fd < 0) {
@@ -32,7 +44,7 @@ int main(void){
 	printf("Reset device\n");
 
 	/* Configure device */
-	err = ioctl(fd,IO_KEYBOARD_CONFIG_MULTI_LINE);
+	err = ioctl(fd,cmd);
 	if (fd < 0) {
 			printf("ERROR WHILE CONFIGURING DEVICE!!!\n");
 			return -1;
