@@ -148,7 +148,7 @@ int init_system(struct keyboard_dev *device){
 	  goto err_return;
 	}
 
-	pollable_bak = device->pins.is_pollable;
+	pollable_bak = device->is_pollable;
 	/* IF IT IS CONFIGURED AS POLLABLE BY INTERRUPT, THEN AN EXTRA PIN IS
 	 * NEEDED TO DO SO
 	 */

@@ -82,6 +82,7 @@ int keyboard_init(void){
 	dev->cdev.owner = THIS_MODULE;
 
 	/* Init the fields within the keyboard_dev struct */
+	dev->is_pollable = 0;
 	dev->configured = 0;
 	dev->key = START;
 	dev->readers_count = tmp_atomic;
@@ -164,26 +165,46 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 		case IO_KEYBOARD_RESET://Reset data
 			printk(KERN_ALERT DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
 			if (atomic_read(&local_dev->readers_count) == 0) {
-				printk(KERN_ALERT DEVICE_NAME ": !!!!!!!!!!! Preset key !!!!!!! \n");
+				local_dev->configured = 0;
+				local_dev->is_pollable = 0;
 				local_dev->key = UNDEFINED_KEY;
-				printk(KERN_ALERT DEVICE_NAME ": !!!!!!!!!!! Key set !!!!!!! \n");
+				shutdown_system();
 				ret = 0;
 			} else ret = -EINVAL;
 			break;
 
-		case IO_KEYBOARD_CONFIG://Configure pins, then arg is a pointer to keyboard_pins struct
-			printk(KERN_ALERT DEVICE_NAME ": CONFIG DEVICE COMMAND RECEIVED \n");
-			printk(KERN_ALERT DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
-			if (local_dev->configured & 0x1) {
+		case IO_KEYBOARD_CONFIG_MULTI_LINE://Configure pins
+			printk(KERN_ALERT DEVICE_NAME ": CONFIGURING SYSTEM FOR MULTI IRQS MODE  \n");
+			if (local_dev->configured) {
 				ret = -EINVAL;  //If already configured return
 			} else {
 				printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
+				local_dev->is_pollable = 0x0;
 				ret = init_system(filp->private_data);
-				local_dev->configured = 0x1;
+				if (!ret){	//Initialized without errors
+					local_dev->configured = 0x1;
+				}
 			}
 			break;
 
+			case IO_KEYBOARD_CONFIG_SINGLE_LINE://Configure pins
+				printk(KERN_ALERT DEVICE_NAME ": CONFIGURING SYSTEM FOR SINGLE IRQS MODE  \n");
+				if (local_dev->configured) {
+					ret = -EINVAL;  //If already configured return
+				} else {
+					printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
+					local_dev->is_pollable = 0x1;
+					ret = init_system(filp->private_data);
+					if (!ret){	//Initialized without errors
+						local_dev->configured = 0x1;
+					}
+				}
+				break;
+
 		default:	/* Invalid command */
+			if (local_dev->configured) { //Shutting down everything if needed
+				shutdown_system();
+			}
 			ret = -ENOTTY;
 	}
 
@@ -200,7 +221,7 @@ int keyboard_release(struct inode *inode, struct file *filp){
 void keyboard_exit(void){
 
 	/* Release all irqs and gpios requested on initialization */
-	shutdown_system(void)
+	shutdown_system();
 
 	/* Delete char device from kernel space */
 	printk(KERN_ALERT DEVICE_NAME ": Deleting char device...\n");

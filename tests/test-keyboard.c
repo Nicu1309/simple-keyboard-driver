@@ -32,7 +32,7 @@ int main(void){
 	printf("Reset device\n");
 
 	/* Configure device */
-	err = ioctl(fd,IO_KEYBOARD_CONFIG);
+	err = ioctl(fd,IO_KEYBOARD_CONFIG_MULI_LINE);
 	if (fd < 0) {
 			printf("ERROR WHILE CONFIGURING DEVICE!!!\n");
 			return -1;

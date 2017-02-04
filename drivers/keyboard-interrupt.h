@@ -37,11 +37,14 @@
 #define GPIO_KEY_DOWN 17
 #define GPIO_KEY_ESCAPE 25
 #define GPIO_KEY_LEFT 27
-#define GPIO_POLL_IRQ 0
+#define GPIO_POLL_IRQ 13
 #define GPIO_USED_NUM 7	//Number of used gpio pins
 
+/* Mask to get the config parameters within the keyboard_dev struct */
+#define MASK_POLLABLE	0x01
+#define MASK_CONFIGURED 0x02
+
 struct keyboard_pins {
-	uint8_t is_pollable :1;		//Indicates if get data comes from polling or interrupt
 	uint8_t poll_interrupt_pin;
 	uint16_t poll_interrupt_irq;
 	uint8_t vcc_pin;
@@ -64,7 +67,8 @@ struct keyboard_dev {
 	wait_queue_head_t readers_queue;
 	struct cdev cdev;
 	atomic_t readers_count;
-	uint8_t configured	:1;
+	uint8_t is_pollable :1;		//Indicates if get data comes from polling or interrupt (b0)
+	uint8_t configured	:1;		//Indicates if already configured (b1)
 	struct keyboard_pins pins;
 };
 
