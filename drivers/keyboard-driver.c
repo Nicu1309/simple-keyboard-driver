@@ -31,7 +31,6 @@ static dev_t devno;
 static atomic_t tmp_atomic = ATOMIC_INIT(0);
 struct keyboard_dev *dev;	//Keyboard device custom data
 static struct class* keyboard_class;	//Class for /sys/
-
 static struct file_operations keyboard_fops = {	//Struct for operations
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = keyboard_unlocked_ioctl,
@@ -39,6 +38,8 @@ static struct file_operations keyboard_fops = {	//Struct for operations
 	.read = keyboard_read,
 	.release = keyboard_release
 };
+
+
 
 int keyboard_init(void){
 	int err, major;
@@ -58,7 +59,7 @@ int keyboard_init(void){
 	keyboard_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (keyboard_class < 0){
 		unregister_chrdev_region(devno,COUNT);
-		printk(KERN_ALERT DEVICE_NAME ": Unable to create class for device\n");
+		printk(KERN_DEBUG DEVICE_NAME ": Unable to create class for device\n");
 		return err;
 	}
 
@@ -70,7 +71,7 @@ int keyboard_init(void){
 	if (dc < 0){
 		class_destroy(keyboard_class);
         	unregister_chrdev_region(devno,COUNT);
-		printk(KERN_ALERT DEVICE_NAME ": Unable to create device from class\n");
+		printk(KERN_DEBUG DEVICE_NAME ": Unable to create device from class\n");
 		return err;
 	}
 
@@ -98,7 +99,7 @@ int keyboard_init(void){
 		device_destroy(keyboard_class,devno);
 		class_destroy(keyboard_class);
         	unregister_chrdev_region(devno,COUNT);
-		printk(KERN_ALERT DEVICE_NAME ": Unable to register char device\n");
+		printk(KERN_DEBUG DEVICE_NAME ": Unable to register char device\n");
 		return err;
 	}
 
@@ -108,14 +109,14 @@ int keyboard_init(void){
 int keyboard_open(struct inode *inode, struct file *filp){
 	struct keyboard_dev *local_dev; /* device information */
 
-	printk(KERN_ALERT DEVICE_NAME ": Opening\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Opening\n");
 	local_dev = container_of(inode->i_cdev, struct keyboard_dev, cdev);
 
-	printk(KERN_ALERT DEVICE_NAME ": obtained struct\n");
+	printk(KERN_DEBUG DEVICE_NAME ": obtained struct\n");
 	filp->private_data = local_dev; /* for other methods */
 	/* No need to limit the open devices to one as multiple processes can read from the
 	keyboard at the same time */
-	printk(KERN_ALERT DEVICE_NAME ":returning\n");
+	printk(KERN_DEBUG DEVICE_NAME ":returning\n");
 
 	return 0;
 }
@@ -128,27 +129,25 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t 
 
 	if (count <= 0) return -EINVAL;	//Invalid argument
 	if (!local_dev->configured) return -EFAULT;
-	printk(KERN_ALERT DEVICE_NAME ":INSIDE KERNEL READING....\n");
-	printk(KERN_ALERT DEVICE_NAME ": Increment readers count\n");
+	printk(KERN_DEBUG DEVICE_NAME ":INSIDE KERNEL READING....\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Increment readers count\n");
 	/* Increment readers count */
 	atomic_inc(&local_dev->readers_count);
 
-	printk(KERN_ALERT DEVICE_NAME ": Queueing reader\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Queueing reader\n");
 	/* Wait for key to be pressed through interrupt handler */
 	wait_event_interruptible(local_dev->readers_queue,(atomic_read(&local_dev->readers_count) > 0 && (local_dev->key != UNDEFINED_KEY)));
 
-	printk(KERN_ALERT DEVICE_NAME ": Awake reader \n");
+	printk(KERN_DEBUG DEVICE_NAME ": Awake reader \n");
 
 	/* Decrement readers count and read key as this has been waken up */
 	pressed_key = local_dev->key;
-	printk(KERN_ALERT DEVICE_NAME ": HAN PULSADO LA TECLA: %c \n", pressed_key+'0');
 	if (!atomic_dec_and_test (&local_dev->readers_count)){
 			local_dev->key = UNDEFINED_KEY;	//All readers have already read the pressed key
 	}
 
 	/* Copy pressed key to user buffer */
 	pressed_key += '0';	//ASCII code of number
-	printk(KERN_ALERT DEVICE_NAME ": DESPUES DE MODIFICAR HAN PULSADO LA TECLA: %c \n", pressed_key);
 	if (copy_to_user(buf, &pressed_key, sizeof(uint8_t))) retval = -EFAULT;
 	else retval = NUM_CHARS_PER_KEY;
 
@@ -158,12 +157,12 @@ ssize_t keyboard_read(struct file *filp, char __user *buf, size_t count, loff_t 
 long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	struct keyboard_dev *local_dev = filp->private_data; /* device information */
 	int ret;
-	printk(KERN_ALERT DEVICE_NAME ":INSIDE KERNEL CONFIGURING....\n");
-	printk(KERN_ALERT DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
+	printk(KERN_DEBUG DEVICE_NAME ":INSIDE KERNEL CONFIGURING....\n");
+	printk(KERN_DEBUG DEVICE_NAME ": THE KEY IS %c \n",local_dev->key + '0');
 
 	switch (cmd) {				//TODO Would be great if could be added command for retrieving pin config
 		case IO_KEYBOARD_RESET://Reset data
-			printk(KERN_ALERT DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
+			printk(KERN_DEBUG DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
 			if (atomic_read(&local_dev->readers_count) == 0 && (local_dev->configured)) {
 				local_dev->is_pollable = 0;
 				local_dev->key = UNDEFINED_KEY;
@@ -174,11 +173,11 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			break;
 
 		case IO_KEYBOARD_CONFIG_MULTI_LINE://Configure pins
-			printk(KERN_ALERT DEVICE_NAME ": CONFIGURING SYSTEM FOR MULTI IRQS MODE  \n");
+			printk(KERN_DEBUG DEVICE_NAME ": CONFIGURING SYSTEM FOR MULTI IRQS MODE  \n");
 			if (local_dev->configured) {
 				ret = -EINVAL;  //If already configured return
 			} else {
-				printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
+				printk(KERN_DEBUG DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
 				local_dev->is_pollable = 0x0;
 				ret = init_system(filp->private_data);
 				if (!ret){	//Initialized without errors
@@ -188,11 +187,11 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			break;
 
 			case IO_KEYBOARD_CONFIG_SINGLE_LINE://Configure pins
-				printk(KERN_ALERT DEVICE_NAME ": CONFIGURING SYSTEM FOR SINGLE IRQS MODE  \n");
+				printk(KERN_DEBUG DEVICE_NAME ": CONFIGURING SYSTEM FOR SINGLE IRQS MODE  \n");
 				if (local_dev->configured) {
 					ret = -EINVAL;  //If already configured return
 				} else {
-					printk(KERN_ALERT DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
+					printk(KERN_DEBUG DEVICE_NAME ": INITIALIZING SYSTEM.... \n");
 					local_dev->is_pollable = 0x1;
 					ret = init_system(filp->private_data);
 					if (!ret){	//Initialized without errors
@@ -211,12 +210,10 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	return ret;
 }
 
-
 int keyboard_release(struct inode *inode, struct file *filp){
-	printk(KERN_ALERT DEVICE_NAME ": CLOSING THIS DEVICE !!!!!!!!!!!!!!\n");
+	printk(KERN_DEBUG DEVICE_NAME ": CLOSING THIS DEVICE !!!!!!!!!!!!!!\n");
 	return 0;
 }
-
 
 void keyboard_exit(void){
 
@@ -224,31 +221,31 @@ void keyboard_exit(void){
 	shutdown_system();
 
 	/* Delete char device from kernel space */
-	printk(KERN_ALERT DEVICE_NAME ": Deleting char device...\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Deleting char device...\n");
 	cdev_del(&dev->cdev);
-	printk(KERN_ALERT DEVICE_NAME ": Char device deleted\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Char device deleted\n");
 
 	/* Free memory used */
-	printk(KERN_ALERT DEVICE_NAME ": Freeing memory...\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Freeing memory...\n");
 	kfree(dev);
-	printk(KERN_ALERT DEVICE_NAME ": Memory freed\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Memory freed\n");
 
 	/* Destroy device from /sys */
-	printk(KERN_ALERT DEVICE_NAME ": Destroying device from /sys/ ...\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Destroying device from /sys/ ...\n");
 	device_destroy(keyboard_class,devno);
-	printk(KERN_ALERT DEVICE_NAME ": Device destroyed\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Device destroyed\n");
 
 	/* Destroy class from /sys */
-	printk(KERN_ALERT DEVICE_NAME ": Destroying class from /sys/ ...\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Destroying class from /sys/ ...\n");
 	class_destroy(keyboard_class);
-	printk(KERN_ALERT DEVICE_NAME ": Class destroyed\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Class destroyed\n");
 
 	/* Unregister device */
-	printk(KERN_ALERT DEVICE_NAME ": Unregistering driver...\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Unregistering driver...\n");
 	unregister_chrdev_region(devno,COUNT);
-	printk(KERN_ALERT DEVICE_NAME ": Driver unregistered succesfully\n");
+	printk(KERN_DEBUG DEVICE_NAME ": Driver unregistered succesfully\n");
 
-	printk(KERN_ALERT DEVICE_NAME ": EXITING MODULE NOW!\n");
+	printk(KERN_DEBUG DEVICE_NAME ": EXITING MODULE NOW!\n");
 
 	return;
 }

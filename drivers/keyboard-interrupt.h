@@ -37,7 +37,7 @@
 #define GPIO_KEY_DOWN 17
 #define GPIO_KEY_ESCAPE 25
 #define GPIO_KEY_LEFT 27
-#define GPIO_POLL_IRQ 13
+#define GPIO_POLL_IRQ 31
 #define GPIO_USED_NUM 7	//Number of used gpio pins
 
 /* Mask to get the config parameters within the keyboard_dev struct */

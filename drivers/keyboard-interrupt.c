@@ -19,9 +19,9 @@ static const uint32_t pins8_offset[48] = {0,0,0,0x818,0x81C,0x808,0x80C,0,0,0,0,
 
 static const uint32_t pins8_value[48] = {0,0,0,38,39,34,35,0,0,0,0,45,44,0,26,47,46,27,65,0,63,62,37,36,33,32,61,86,88,87,89,0,0,0,0,0,0,0,0,76,77,74,75,72,73,70};
 
-static const uint32_t pins9_offset[48] = {0,0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0x958,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const uint32_t pins9_offset[48] = {0,0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0x958,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0x990,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-static const uint32_t pins9_value[48] = {0,0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static const uint32_t pins9_value[48] = {0,0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,110,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 static int setup_pinmux(struct keyboard_pins *pins);
 static int request_pins(struct keyboard_pins *pins);
@@ -134,6 +134,10 @@ int init_system(struct keyboard_dev *device){
 	printk(KERN_DEBUG DEVICE_NAME ": STORING DEV POINTER  \n");
 	dev = device; //Store pointer to device struct
 
+	/* Store if is in pollable mode */
+	pollable_bak = device->is_pollable;
+	printk(KERN_DEBUG DEVICE_NAME ": IS_POLLABLE? -> %d\n",pollable_bak);
+
 	printk(KERN_DEBUG DEVICE_NAME ": SETTING UP PINMUX.. \n");
  	err = setup_pinmux(&device->pins);
 	if (err < 0) {
@@ -148,7 +152,6 @@ int init_system(struct keyboard_dev *device){
 	  goto err_return;
 	}
 
-	pollable_bak = device->is_pollable;
 	/* IF IT IS CONFIGURED AS POLLABLE BY INTERRUPT, THEN AN EXTRA PIN IS
 	 * NEEDED TO DO SO
 	 */
@@ -254,8 +257,7 @@ static int setup_pinmux(struct keyboard_pins *k_pins){
 
 static int request_irq_poll_pin(struct keyboard_pins *pins){
 	int err;
-	err = gpio_request_one(pins->poll_interrupt_pin, GPIOF_OUT_INIT_HIGH,
-		DEVICE_NAME " gpio_poll_irq");
+	err = gpio_request_one(pins->poll_interrupt_pin, GPIOF_IN, DEVICE_NAME " gpio_poll_irq");
 	if (err < 0) {
 		printk(KERN_DEBUG DEVICE_NAME " : failed to request IRQ_POLL pin %d.\n",
 		 pins->poll_interrupt_pin);
