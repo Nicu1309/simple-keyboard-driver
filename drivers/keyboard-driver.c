@@ -164,11 +164,11 @@ long keyboard_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	switch (cmd) {				//TODO Would be great if could be added command for retrieving pin config
 		case IO_KEYBOARD_RESET://Reset data
 			printk(KERN_ALERT DEVICE_NAME ": RESET DEVICE COMMAND RECEIVED \n");
-			if (atomic_read(&local_dev->readers_count) == 0) {
-				local_dev->configured = 0;
+			if (atomic_read(&local_dev->readers_count) == 0 && (local_dev->configured)) {
 				local_dev->is_pollable = 0;
 				local_dev->key = UNDEFINED_KEY;
 				shutdown_system();
+				local_dev->configured = 0;
 				ret = 0;
 			} else ret = -EINVAL;
 			break;
