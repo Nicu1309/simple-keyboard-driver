@@ -85,20 +85,21 @@ int keyboard_init(void){
 	/* Init the fields within the keyboard_dev struct */
 	dev->is_pollable = 0;
 	dev->configured = 0;
-	dev->key = START;
+	dev->key = UNDEFINED_KEY;
 	dev->readers_count = tmp_atomic;
 	init_waitqueue_head(&dev->readers_queue);
 
 	printk(KERN_INFO DEVICE_NAME ": Everything initialized \n");
-	printk(KERN_INFO DEVICE_NAME ": Key value -> %c\n", dev->key+'0');
-
-	dev->key = UNDEFINED_KEY;
 
 	err = cdev_add(&dev->cdev,devno,1);	//Register char device into kernel
+
 	if (err < 0){
+		/* If error while registering then undo everything done before to register 
+		 * device into the kernel
+		 */
 		device_destroy(keyboard_class,devno);
 		class_destroy(keyboard_class);
-        	unregister_chrdev_region(devno,COUNT);
+    unregister_chrdev_region(devno,COUNT);
 		printk(KERN_DEBUG DEVICE_NAME ": Unable to register char device\n");
 		return err;
 	}
