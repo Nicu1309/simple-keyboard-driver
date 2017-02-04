@@ -199,6 +199,9 @@ int keyboard_release(struct inode *inode, struct file *filp){
 
 void keyboard_exit(void){
 
+	/* Release all irqs and gpios requested on initialization */
+	shutdown_system(void)
+
 	/* Delete char device from kernel space */
 	printk(KERN_ALERT DEVICE_NAME ": Deleting char device...\n");
 	cdev_del(&dev->cdev);

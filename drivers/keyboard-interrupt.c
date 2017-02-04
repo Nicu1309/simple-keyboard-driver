@@ -12,7 +12,27 @@
 
 #define AM33XX_CONTROL_BASE 0x44e10000
 
-irqreturn_t polling_interrupt_handler(int irq, void* dev_id)
+static struct keyboard_dev *dev;
+static uint8_t pollable_bak = 0;	//Used to avoid bad intented behaviour from user
+
+static const uint32_t pins8_offset[48] = {0,0,0,0x818,0x81C,0x808,0x80C,0,0,0,0,0x834,0x830,0,0x828,0x83C,0x838,0x82C,0x88C,0,0x884,0x880,0x814,0x810,0x804,0x800,0x87C,0x8E0,0x8E8,0x8E4,0x8EC,0,0,0,0,0,0,0,0,0x8B8,0x8BC,0x8B4,0x8B0,0x8A8,0x8AC,0x8A0};
+
+static const uint32_t pins8_value[48] = {0,0,0,38,39,34,35,0,0,0,0,45,44,0,26,47,46,27,65,0,63,62,37,36,33,32,61,86,88,87,89,0,0,0,0,0,0,0,0,76,77,74,75,72,73,70};
+
+static const uint32_t pins9_offset[48] = {0,0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0x958,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+static const uint32_t pins9_value[48] = {0,0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+static int setup_pinmux(struct keyboard_pins *pins);
+static int request_pins(struct keyboard_pins *pins);
+static int request_irq_poll_pin(struct keyboard_pins *pins);
+static int request_irq_poll_interrupt(struct keyboard_pins *pins);
+static int request_interrupts(struct keyboard_pins *pins);
+static void release_interrupts(struct keyboard_pins *pins);
+static int request_pins(struct keyboard_pins *pins);
+static void release_pins(struct keyboard_pins *pins);
+
+irqreturn_t polling_interrupt_handler(int irq, void* dev_id);
 irqreturn_t start_key_interrupt_handler(int irq, void* dev_id);
 irqreturn_t escape_key_interrupt_handler(int irq, void* dev_id);
 irqreturn_t up_key_interrupt_handler(int irq, void* dev_id);
@@ -20,25 +40,6 @@ irqreturn_t down_key_interrupt_handler(int irq, void* dev_id);
 irqreturn_t right_key_interrupt_handler(int irq, void* dev_id);
 irqreturn_t left_key_interrupt_handler(int irq, void* dev_id);
 
-static int setup_pinmux(struct keyboard_pins *k_pins);
-static int request_pins(struct keyboard_pins *pins);
-static int request_irq_poll_pin(struct keyboard_pins *pins);
-static int request_irq_poll_interrupt(struct keyboard_pins *pins);
-static int request_interrupts(struct keyboard_pins *pins);
-static int release_interrupts(struct keyboard_pins *pins);
-static int request_pins(struct keyboard_pins *pins);
-static int release_pins(struct keyboard_pins *pins);
-
-static struct keyboard_dev *dev;
-static uint8_t pollable_bak = 0;	//Used to avoid bad intented behaviour from user
-
-static const uint32_t pins8_offset[48] = {0,0,0,0x818,0x81C,0x808,0x80C,0,0,0,0,0x834,0x830,0,0x828,0x83C,0x838,0x82C,0x88C,0,0x884,0x880,0x814,0x810,0x804,0x800,0x87C,0x8E0,0x8E8,0x8E4,0x8EC,0,0,0,0,0,0,0,0,0x8B8,0x8BC,0x8B4,0x8B0,0x8A8,0x8AC,0x8A0,0x8A4};
-
-static const uint32_t pins8_value[48] = {0,0,0,38,39,34,35,0,0,0,0,45,44,0,26,47,46,27,65,0,63,62,37,36,33,32,61,86,88,87,89,0,0,0,0,0,0,0,0,76,77,74,75,72,73,70,71};
-
-static const uint32_t pins9_offset[48] = {0,0,0,0,0,0,0,0,0,0,0,0x870,0x878,0x874,0x848,0,0x958,0x95c,0,0,0,0,0,0,0,0x9AC,0,0x9A4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-static const uint32_t pins9_value[48] = {0,0,0,0,0,0,0,0,0,0,0,30,60,31,50,0,0,5,0,0,0,0,0,0,0,117,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
 /**
@@ -51,12 +52,12 @@ irqreturn_t polling_interrupt_handler(int irq, void* dev_id){
 	printk(KERN_DEBUG DEVICE_NAME ": POLLING... \n");
 
 	/* Poll pins to get pressed key */
-	if (gpio_set_value(data->pins.right_key_pin)) pressed = RIGHT;
-	else if (gpio_set_value(data->pins.start_key_pin)) pressed = START;
-	else if (gpio_set_value(data->pins.up_key_pin)) pressed = UP;
-	else if (gpio_set_value(data->pins.down_key_pin)) pressed = DOWN;
-	else if (gpio_set_value(data->pins.left_key_pin)) pressed = LEFT;
-	else if (gpio_set_value(data->pins.escape_key_pin)) pressed = ESCAPE;
+	if (gpio_get_value(data->pins.right_key_pin)) pressed = RIGHT;
+	else if (gpio_get_value(data->pins.start_key_pin)) pressed = START;
+	else if (gpio_get_value(data->pins.up_key_pin)) pressed = UP;
+	else if (gpio_get_value(data->pins.down_key_pin)) pressed = DOWN;
+	else if (gpio_get_value(data->pins.left_key_pin)) pressed = LEFT;
+	else if (gpio_get_value(data->pins.escape_key_pin)) pressed = ESCAPE;
 	data->key = pressed;
 
 	/* ACK irq */
@@ -171,7 +172,7 @@ int init_system(struct keyboard_dev *device){
 
 int shutdown_system(void){
 	release_interrupts(&dev->pins);
-	release_gpios(&dev->pins);
+	release_pins(&dev->pins);
 	return 0;
 }
 
@@ -181,6 +182,7 @@ int shutdown_system(void){
  */
 static int setup_pinmux(struct keyboard_pins *k_pins){
 	 int i;
+	 void* addr;
 	 u32 pins[] = { 					// offsets in AM335x ref man Table 9-10, upon pin names
 			 					// pin names: from table/mode0 in BB ref manual
 	0,
@@ -212,7 +214,7 @@ static int setup_pinmux(struct keyboard_pins *k_pins){
 
 	printk(KERN_DEBUG DEVICE_NAME ": DONE WITH POPULATING PIN NUMBERS \n");
    for (i=0; i<GPIO_USED_NUM*2; i+=2) {	// map the mapped i/o addresses to kernel high memory
-      void* addr = ioremap(pins[i], 4);
+      addr = ioremap(pins[i], 4);
 			printk(KERN_DEBUG DEVICE_NAME ": GPIO NUMBER %d\n",pins[i]);
       if (NULL == addr)
          return -EBUSY;
@@ -265,7 +267,7 @@ static int request_irq_poll_pin(struct keyboard_pins *pins){
 }
 
 static int request_irq_poll_interrupt(struct keyboard_pins *pins){
-	int err,num_irq;
+	int err,irq_num;
 	/* POLLING INTERRUPT */
 	printk(KERN_DEBUG DEVICE_NAME ": REQUEST IRQ FOR POLLING \n");
 	irq_num = gpio_to_irq(pins->poll_interrupt_pin);	//Request interrupt number
@@ -455,7 +457,7 @@ static int request_interrupts(struct keyboard_pins *pins){
 		disable_irq(pins->right_key_irq);
 		free_irq(pins->right_key_irq, (void*)dev);
 	err_return_irq:
-		release_gpios(pins);
+		release_pins(pins);
 		return err;
 }
 
@@ -504,7 +506,7 @@ static void release_interrupts(struct keyboard_pins *pins){
 }
 
 static int request_pins(struct keyboard_pins *pins){
-	int err,irq_num;
+	int err;
 
 	printk(KERN_DEBUG DEVICE_NAME ": REQUEST VCC PIN \n");
 	/* Request VCC pin */

@@ -71,5 +71,4 @@ struct keyboard_dev {
 int init_system(struct keyboard_dev *);
 int shutdown_system(void);
 
-
 #endif
