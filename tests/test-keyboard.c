@@ -7,7 +7,7 @@
 
 static const char* path = "/dev/simple-keyboard";
 static struct pin_conf custom_pinmux = {
-	.irq_pin = 932,
+	.irq_pin = 931,
 	.vcc_pin = 911,
 	.right_key_pin = 912,
 	.start_key_pin = 913,
